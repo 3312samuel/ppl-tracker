@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPL 訓練紀錄</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;700&family=Noto+Sans+HK:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a coach's clipboard — quick, plain, nothing between you and the next set
+   IDEA: a gym log card, one row per set, numbers big enough to type with chalky thumbs
+   PICTURE: the working log itself, coloured by day type (pull green, push red, legs blue)
+   COLOUR and TYPE: warm paper / near-black, day colour as the one committed field; Noto Sans HK + Inter Tight numerals
+   LAYOUT: single column, sticky day header, rest timer docked at the bottom */
+:root{color-scheme:light dark;--bg:light-dark(#F5F3EE,#121416);--card:light-dark(#FFFFFF,#1C1F22);--ink:light-dark(#1F2328,#ECEDEE);--muted:light-dark(#6B7075,#9AA0A6);--line:light-dark(#E3E0D9,#2C3035);--soft:light-dark(#ECE8DF,#23272B);--c:#2E7D6B}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Noto Sans HK",system-ui,sans-serif;overflow-x:clip;padding-bottom:120px}
+.num{font-family:"Inter Tight","Noto Sans HK",sans-serif;font-variant-numeric:tabular-nums}
+header{padding:20px 16px 8px;max-width:640px;margin:auto;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font-size:30px;line-height:1.1;margin:0;flex:1}
+.sync{font-size:13px;color:var(--muted)}
+nav{max-width:640px;margin:0 auto;padding:0 16px;display:flex;gap:8px}
+nav button,.chip,.btn{font:inherit;border:0;border-radius:12px;min-height:44px;padding:0 16px;cursor:pointer;background:var(--soft);color:var(--ink)}
+nav button[aria-selected=true]{background:var(--ink);color:var(--bg);font-weight:700}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--c);outline-offset:2px}
+main{max-width:640px;margin:auto;padding:12px 16px}
+.days{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+.chip{flex:none;font-weight:500;padding:0 14px}
+.chip[aria-pressed=true]{background:var(--dc);color:#fff;font-weight:700}
+.meta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:14px}
+label.f{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;min-height:44px;padding:8px 10px;width:100%}
+.banner{background:var(--c);color:#fff;border-radius:18px 18px 0 0;padding:16px 18px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;position:sticky;top:0;z-index:2}
+.banner b{font-size:24px}.banner span{opacity:.9}
+.list{background:var(--card);border-radius:0 0 18px 18px;padding:4px 0 8px;margin-bottom:16px}
+.ex{padding:14px 16px;border-top:1px solid var(--line)}.ex:first-child{border-top:0}
+.exh{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.exh h3{margin:0;font-size:18px;font-weight:700}
+.tgt{color:var(--c);font-weight:700;white-space:nowrap}
+.last{font-size:13px;color:var(--muted);margin:2px 0 8px}
+.up{display:inline-block;background:var(--c);color:#fff;border-radius:6px;padding:0 6px;font-size:12px;margin-left:6px}
+.row{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,1fr) 52px;gap:8px;align-items:center;margin-top:6px}
+.row .n{color:var(--muted);text-align:center;font-weight:700}
+.row input{text-align:center;font-size:20px;font-weight:700;padding:6px}
+.row input::placeholder{font-weight:500;color:var(--muted);opacity:.7}
+.hd{font-size:12px;color:var(--muted);text-align:center}
+.ok{height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--muted);font-size:20px;cursor:pointer}
+.ok[aria-pressed=true]{background:var(--c);border-color:var(--c);color:#fff}
+.done input{border-color:var(--c)}
+.sm{display:flex;gap:8px;margin-top:8px}
+.sm button{font:inherit;font-size:14px;background:none;border:0;color:var(--c);min-height:36px;padding:0 4px;cursor:pointer}
+.btn.main{width:100%;background:var(--c);color:#fff;font-weight:700;font-size:18px;min-height:54px;margin-top:6px}
+.btn.ghost{background:var(--soft)}
+.note{margin:6px 0 4px}
+.msg{min-height:24px;font-size:14px;color:var(--muted);margin-top:8px;text-align:center}
+.timer{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:var(--bg);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:5;display:none}
+.timer.on{display:block}
+.tw{max-width:640px;margin:auto;display:flex;align-items:center;gap:10px}
+.tw .t{font-size:32px;font-weight:700;flex:1}
+.tw button{font:inherit;border:0;border-radius:10px;min-height:44px;padding:0 12px;background:rgba(127,127,127,.25);color:inherit;cursor:pointer}
+.bar{height:4px;background:rgba(127,127,127,.3);border-radius:2px;margin:6px auto 0;max-width:640px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--c);width:0}
+.timer.end .t{color:#ffb4a2}
+.hist{display:grid;gap:10px}
+.hi{background:var(--card);border-radius:14px;padding:12px 14px;border-left:6px solid var(--dc)}
+.hi summary{cursor:pointer;display:flex;justify-content:space-between;gap:8px;list-style:none;min-height:32px;align-items:center}
+.hi summary::-webkit-details-marker{display:none}
+.hi pre{white-space:pre-wrap;font:14px/1.6 "Noto Sans HK",sans-serif;margin:8px 0}
+.del{font:inherit;font-size:14px;border:0;background:none;color:#C2553A;min-height:36px;cursor:pointer;padding:0}
+.empty{color:var(--muted);text-align:center;padding:32px 0}
+textarea.out{min-height:320px;font-size:14px;line-height:1.6}
+.erow{display:flex;gap:8px;margin-bottom:10px}
+.erow select{flex:1}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .9s linear}.chip,.ok{transition:background .15s}}
+</style>
+</head>
+<body>
+<header><h1>訓練紀錄</h1><span class="sync" id="sync">只存喺呢部機</span></header>
+<nav role="tablist">
+  <button role="tab" id="t-log" aria-selected="true">今日</button>
+  <button role="tab" id="t-hist" aria-selected="false">紀錄</button>
+  <button role="tab" id="t-exp" aria-selected="false">匯出</button>
+</nav>
+
+<main id="v-log">
+  <div class="days" id="days"></div>
+  <div class="meta">
+    <label class="f">日期<input type="date" id="date"></label>
+    <label class="f">今朝體重 (kg)<input type="number" inputmode="decimal" step="0.1" id="bw" placeholder="例如 85.2"></label>
+  </div>
+  <div class="banner" id="banner"></div>
+  <div class="list" id="list"></div>
+  <label class="f">備註（感覺、痛位、睡眠等）<textarea id="note" class="note" rows="2"></textarea></label>
+  <button class="btn main" id="finish">完成訓練・儲存</button>
+  <div class="msg" id="msg" role="status"></div>
+</main>
+
+<main id="v-hist" hidden>
+  <div class="hist" id="hist"></div>
+</main>
+
+<main id="v-exp" hidden>
+  <div class="erow">
+    <select id="range" aria-label="匯出範圍">
+      <option value="7">最近 1 週</option>
+      <option value="14">最近 2 週</option>
+      <option value="28">最近 4 週</option>
+      <option value="0">全部</option>
+    </select>
+    <button class="btn main" id="copy" style="width:auto;margin:0">複製</button>
+  </div>
+  <textarea class="out" id="out" readonly aria-label="匯出內容"></textarea>
+  <div class="msg" id="cmsg" role="status">複製之後直接貼返落同 Claude 嘅對話就得。</div>
+  <h2 style="font-size:20px;margin:28px 0 6px">備份／還原</h2>
+  <p class="sync" style="margin:0 0 10px">紀錄存喺呢部手機嘅瀏覽器。換機或者清瀏覽器資料之前，先撳「複製備份碼」，將備份碼貼去 WhatsApp 自己或者記事本存好。</p>
+  <div class="erow"><button class="btn ghost" id="bk" style="flex:1">複製備份碼</button><button class="btn ghost" id="rs" style="flex:1">還原</button></div>
+  <textarea id="bkt" rows="4" placeholder="還原：將備份碼貼喺度，再撳「還原」" aria-label="備份碼"></textarea>
+  <div class="msg" id="bmsg" role="status"></div>
+</main>
+
+<div class="timer" id="timer">
+  <div class="tw">
+    <span>休息</span><span class="t num" id="tt">0:00</span>
+    <button id="tm">−15</button><button id="tp">+15</button><button id="tx">關</button>
+  </div>
+  <div class="bar"><i id="tb"></i></div>
+</div>
+
+<script>
+{
+const PLAN=[
+ {code:"Push A",wd:"週一",focus:"胸優先",c:"#C2553A",ex:[["上斜臥推",4,"6–10"],["平板機械推胸／啞鈴臥推",3,"8–12"],["坐姿啞鈴肩推",3,"8–10"],["繩索側平舉",3,"12–20"],["繩索夾胸",2,"12–15"],["三頭下壓",3,"10–15"],["Face pull",2,"15–20"]]},
+ {code:"Pull A",wd:"週二",focus:"背闊寬度",c:"#2E7D6B",ex:[["引體上升／寬握下拉",4,"6–10"],["單手跪姿繩索下拉",3,"10–12 每邊"],["胸托 T-bar 划船",3,"8–10"],["直臂下壓",3,"12–15"],["反向飛鳥",3,"15–20"],["二頭彎舉",3,"10–12"]]},
+ {code:"Legs A",wd:"週三",focus:"深蹲日",c:"#3B5BA5",ex:[["深蹲",4,"5–8"],["羅馬尼亞硬拉",3,"8–10"],["腿推",2,"10–12"],["俯臥腿彎舉",3,"10–15"],["提踵",3,"10–15"],["45° 背伸展",3,"12–15"]]},
+ {code:"Push B",wd:"週四",focus:"肩優先",c:"#C2553A",ex:[["站姿槓鈴推舉",4,"5–8"],["平板槓鈴臥推",3,"6–10"],["上斜機械推胸",3,"8–12"],["啞鈴側平舉",3,"12–20"],["過頭三頭伸展",3,"10–15"],["雙槓撐體",2,"8–12"],["反向飛鳥",2,"15–20"]]},
+ {code:"Pull B",wd:"週五",focus:"背部厚度",c:"#2E7D6B",ex:[["Pendlay row／Seal row",4,"6–10"],["窄握對握下拉",3,"8–12"],["坐姿繩索划船（頓 1 秒）",3,"10–12"],["單手啞鈴划船",3,"10–12"],["Face pull",3,"15–20"],["錘式彎舉",3,"10–12"]]},
+ {code:"Legs B",wd:"週六",focus:"單邊／後鏈",c:"#3B5BA5",ex:[["Hack squat／腿推",3,"8–12"],["保加利亞分腿蹲",2,"8–12 每邊"],["臀推",3,"8–12"],["坐姿腿彎舉",3,"10–15"],["腿伸展",2,"12–15"],["提踵",3,"10–15"],["懸垂舉腿",3,"10–15"]]}
+];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const top=r=>parseInt(String(r).split("–")[1]||r,10);
+const WD=["週日","週一","週二","週三","週四","週五","週六"];
+
+let sessions=ls.get("ppl_sessions",[]); // [{id,date,code,bw,note,ex:[{name,target,sets:[{w,r}]}]}]
+let db=null;
+let draft=ls.get("ppl_draft",null);
+
+function freshDraft(code,date){
+  const p=PLAN.find(x=>x.code===code);
+  return {date:date||today(),code,bw:"",note:"",sets:p.ex.map(e=>Array.from({length:e[1]},()=>({w:"",r:"",d:false})))};
+}
+if(!draft||!PLAN.some(p=>p.code===draft.code)){
+  const wd=new Date().getDay();draft=freshDraft(PLAN[wd===0?0:wd-1].code);
+}
+const plan=()=>PLAN.find(p=>p.code===draft.code);
+const saveDraft=()=>ls.set("ppl_draft",draft);
+
+function lastFor(code){
+  return sessions.filter(s=>s.code===code&&s.id!==draft.date+"_"+code.replace(" ","")).sort((a,b)=>b.date.localeCompare(a.date))[0];
+}
+const fmtSet=s=>(s.w===""||s.w==null?"BW":s.w)+"×"+s.r;
+
+function renderDays(){
+  $("days").innerHTML=PLAN.map(p=>`<button class="chip" style="--dc:${p.c}" aria-pressed="${p.code===draft.code}" data-code="${p.code}">${p.wd} ${p.code}</button>`).join("");
+}
+function renderLog(){
+  const p=plan();
+  document.documentElement.style.setProperty("--c",p.c);
+  renderDays();
+  $("date").value=draft.date;$("bw").value=draft.bw;$("note").value=draft.note;
+  $("banner").innerHTML=`<b>${p.wd} ${p.code}</b><span>${p.focus}</span>`;
+  const last=lastFor(p.code);
+  $("list").innerHTML=p.ex.map((e,i)=>{
+    const le=last&&last.ex.find(x=>x.name===e[0]);
+    const ls2=le?le.sets.filter(s=>s.r!==""):[];
+    const hit=ls2.length>=e[1]&&ls2.every(s=>+s.r>=top(e[2]));
+    const lastTxt=ls2.length?`上次 ${esc(last.date.slice(5))}：${ls2.map(fmtSet).map(esc).join("、")}${hit?'<span class="up">全部到頂 → 加重</span>':""}`:"未有紀錄";
+    const rows=draft.sets[i].map((s,j)=>{
+      const ph=ls2[j]||ls2[ls2.length-1];
+      return `<div class="row ${s.d?"done":""}"><span class="n num">${j+1}</span>
+        <input class="num" inputmode="decimal" type="number" step="0.5" aria-label="${esc(e[0])} 第${j+1}組 重量 kg" data-i="${i}" data-j="${j}" data-k="w" value="${esc(s.w)}" placeholder="${ph?esc(ph.w===""?"BW":ph.w):"kg"}">
+        <input class="num" inputmode="numeric" type="number" aria-label="${esc(e[0])} 第${j+1}組 次數" data-i="${i}" data-j="${j}" data-k="r" value="${esc(s.r)}" placeholder="${ph?esc(ph.r):"次"}">
+        <button class="ok" aria-label="完成第${j+1}組" aria-pressed="${s.d}" data-i="${i}" data-j="${j}">✓</button></div>`}).join("");
+    return `<section class="ex"><div class="exh"><h3>${i+1}. ${esc(e[0])}</h3><span class="tgt num">${e[1]} × ${esc(e[2])}</span></div>
+      <div class="last">${lastTxt}</div>
+      <div class="row hd"><span></span><span>重量 kg</span><span>次數</span><span></span></div>${rows}
+      <div class="sm"><button data-add="${i}">＋ 加一組</button>${draft.sets[i].length>1?`<button data-rm="${i}">− 刪一組</button>`:""}</div></section>`;
+  }).join("");
+}
+
+$("days").addEventListener("click",ev=>{
+  const b=ev.target.closest("[data-code]");if(!b||b.dataset.code===draft.code)return;
+  const hasData=draft.sets.some(a=>a.some(s=>s.r!==""));
+  if(hasData&&!b.dataset.sure){b.dataset.sure=1;$("msg").textContent="今日已經有紀錄，再撳一次先會轉日子（未儲存嘅會清走）";setTimeout(()=>delete b.dataset.sure,4000);return}
+  draft=freshDraft(b.dataset.code,draft.date);saveDraft();renderLog();$("msg").textContent="";
+});
+$("list").addEventListener("input",ev=>{
+  const t=ev.target;if(!t.dataset.k)return;
+  draft.sets[t.dataset.i][t.dataset.j][t.dataset.k]=t.value;saveDraft();
+});
+$("list").addEventListener("click",ev=>{
+  const t=ev.target;
+  if(t.classList.contains("ok")){
+    const i=+t.dataset.i,j=+t.dataset.j,s=draft.sets[i][j];
+    if(!s.d&&s.r===""){const r=t.parentNode.querySelectorAll("input");if(!s.w&&r[0].placeholder!=="kg")s.w=r[0].placeholder==="BW"?"":r[0].placeholder;if(r[1].placeholder!=="次")s.r=r[1].placeholder;}
+    s.d=!s.d;saveDraft();renderLog();
+    if(s.d)startTimer(i===0?150:90);
+  }else if(t.dataset.add!=null){const a=draft.sets[t.dataset.add],l=a[a.length-1];a.push({w:l?l.w:"",r:"",d:false});saveDraft();renderLog()}
+  else if(t.dataset.rm!=null){draft.sets[t.dataset.rm].pop();saveDraft();renderLog()}
+});
+$("date").addEventListener("change",e=>{draft.date=e.target.value||today();saveDraft()});
+$("bw").addEventListener("input",e=>{draft.bw=e.target.value;saveDraft()});
+$("note").addEventListener("input",e=>{draft.note=e.target.value;saveDraft()});
+
+$("finish").addEventListener("click",async()=>{
+  const p=plan();
+  const ex=p.ex.map((e,i)=>({name:e[0],target:e[1]+"×"+e[2],sets:draft.sets[i].filter(s=>s.r!=="").map(s=>({w:s.w,r:s.r}))}));
+  if(!ex.some(e=>e.sets.length)){$("msg").textContent="未有任何一組有次數，未儲存。";return}
+  const s={id:draft.date+"_"+p.code.replace(" ",""),date:draft.date,code:p.code,bw:draft.bw,note:draft.note,ex,saved:Date.now()};
+  sessions=sessions.filter(x=>x.id!==s.id).concat(s);ls.set("ppl_sessions",sessions);
+  let where="已儲存喺呢部機";
+  if(db){try{await db.collection("sessions").doc(s.id).set(s);where="已儲存（已同步，Claude 都睇到）"}catch(e){where="已儲存喺呢部機（同步失敗，遲啲再試）"}}
+  stopTimer();
+  const next=PLAN[(PLAN.indexOf(p)+1)%PLAN.length].code;
+  draft=freshDraft(next,today());saveDraft();renderLog();
+  $("msg").textContent=where+"。下次係 "+next+"。";
+  window.scrollTo({top:0});
+});
+
+/* timer */
+let tEnd=0,tLen=0,tInt=null;
+function startTimer(sec){tLen=sec;tEnd=Date.now()+sec*1000;$("timer").classList.add("on");$("timer").classList.remove("end");clearInterval(tInt);tick();tInt=setInterval(tick,500)}
+function stopTimer(){clearInterval(tInt);$("timer").classList.remove("on")}
+function tick(){
+  const left=Math.max(0,Math.round((tEnd-Date.now())/1000));
+  $("tt").textContent=Math.floor(left/60)+":"+String(left%60).padStart(2,"0");
+  $("tb").style.width=(tLen?100*(1-left/tLen):0)+"%";
+  if(left===0&&!$("timer").classList.contains("end")){$("timer").classList.add("end");$("tt").textContent="開始下一組";try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}}
+}
+$("tm").onclick=()=>{tEnd-=15000;tLen=Math.max(15,tLen-15);tick()};
+$("tp").onclick=()=>{tEnd+=15000;tLen+=15;$("timer").classList.remove("end");tick()};
+$("tx").onclick=stopTimer;
+
+/* history */
+function sessionText(s){
+  const p=PLAN.find(x=>x.code===s.code)||{wd:""};
+  const d=new Date(s.date+"T00:00");
+  let t=`${s.date} ${WD[d.getDay()]} ${s.code}${s.bw?`｜體重 ${s.bw}kg`:""}\n`;
+  s.ex.forEach(e=>{if(e.sets.length)t+=`- ${e.name} (${e.target}): ${e.sets.map(fmtSet).join(", ")}\n`});
+  if(s.note)t+=`備註: ${s.note}\n`;
+  return t;
+}
+function renderHist(){
+  const list=[...sessions].sort((a,b)=>b.date.localeCompare(a.date)||b.saved-a.saved);
+  if(!list.length){$("hist").innerHTML='<p class="empty">未有紀錄。練完撳「完成訓練・儲存」就會出現喺度。</p>';return}
+  $("hist").innerHTML=list.map(s=>{
+    const p=PLAN.find(x=>x.code===s.code)||{c:"#888"};
+    const n=s.ex.reduce((a,e)=>a+e.sets.length,0);
+    return `<details class="hi" style="--dc:${p.c}"><summary><b>${esc(s.date)} ${esc(s.code)}</b><span class="num">${n} 組${s.bw?" · "+esc(s.bw)+"kg":""}</span></summary>
+      <pre>${esc(sessionText(s))}</pre><button class="del" data-del="${esc(s.id)}">刪除呢次紀錄</button></details>`}).join("");
+}
+$("hist").addEventListener("click",async ev=>{
+  const b=ev.target.closest("[data-del]");if(!b)return;
+  if(!b.dataset.sure){b.dataset.sure=1;b.textContent="確定刪除？再撳一次";return}
+  const id=b.dataset.del;sessions=sessions.filter(s=>s.id!==id);ls.set("ppl_sessions",sessions);
+  if(db){try{await db.collection("sessions").doc(id).delete()}catch(e){}}
+  renderHist();
+});
+
+/* export */
+function renderExp(){
+  const days=+$("range").value;
+  let list=[...sessions].sort((a,b)=>a.date.localeCompare(b.date));
+  if(days){const c=new Date();c.setDate(c.getDate()-days+1);const cs=c.toISOString().slice(0,10);list=list.filter(s=>s.date>=cs)}
+  if(!list.length){$("out").value="呢個範圍未有紀錄。";return}
+  $("out").value=`【訓練紀錄】${list[0].date} 至 ${list[list.length-1].date}（共 ${list.length} 次）\n格式：重量kg×次數，BW = 自身體重\n\n`+list.map(sessionText).join("\n");
+}
+$("range").addEventListener("change",renderExp);
+$("copy").addEventListener("click",async()=>{
+  const ta=$("out");
+  try{await navigator.clipboard.writeText(ta.value);$("cmsg").textContent="已複製，貼返落同 Claude 嘅對話就得。"}
+  catch(e){ta.focus();ta.select();$("cmsg").textContent="自動複製唔成功：文字已經揀好，長按再揀「複製」。"}
+});
+
+/* backup */
+$("bk").addEventListener("click",async()=>{
+  const code=JSON.stringify({v:1,sessions});$("bkt").value=code;
+  try{await navigator.clipboard.writeText(code);$("bmsg").textContent="已複製備份碼（"+sessions.length+" 次紀錄）。"}
+  catch(e){$("bkt").focus();$("bkt").select();$("bmsg").textContent="自動複製唔成功：備份碼已揀好，長按再揀「複製」。"}
+});
+$("rs").addEventListener("click",()=>{
+  let d;try{d=JSON.parse($("bkt").value.trim())}catch(e){$("bmsg").textContent="備份碼唔啱，請檢查有冇貼齊。";return}
+  const arr=Array.isArray(d)?d:d&&d.sessions;
+  if(!Array.isArray(arr)){$("bmsg").textContent="備份碼唔啱，請檢查有冇貼齊。";return}
+  const ok=arr.filter(x=>x&&typeof x.id==="string"&&typeof x.date==="string"&&typeof x.code==="string"&&Array.isArray(x.ex));
+  const ids=new Set(ok.map(x=>x.id));
+  sessions=sessions.filter(s=>!ids.has(s.id)).concat(ok);ls.set("ppl_sessions",sessions);
+  if(db)ok.forEach(s=>db.collection("sessions").doc(s.id).set(s).catch(()=>{}));
+  $("bmsg").textContent="已還原 "+ok.length+" 次紀錄。";$("bkt").value="";
+});
+
+/* tabs */
+const views={"t-log":"v-log","t-hist":"v-hist","t-exp":"v-exp"};
+document.querySelector("nav").addEventListener("click",ev=>{
+  const b=ev.target.closest("[role=tab]");if(!b)return;
+  for(const k in views){$(k).setAttribute("aria-selected",k===b.id);$(views[k]).hidden=k!==b.id}
+  if(b.id==="t-hist")renderHist();if(b.id==="t-exp")renderExp();
+  if(b.id!=="t-log")document.documentElement.style.setProperty("--c","#2E7D6B");else renderLog();
+});
+
+renderLog();
+
+/* cloud sync */
+if(window.claude&&claude.use){
+  claude.use("db").then(d=>{
+    if(!d)return;db=d;$("sync").textContent="同步緊…";
+    const timer=setTimeout(()=>{$("sync").textContent="未連到雲端，暫存喺呢部機"},10000);
+    db.collection("sessions").onSnapshot(snap=>{
+      if(!snap.metadata.fromCache)clearTimeout(timer);
+      const remote=snap.docs.map(x=>x.data()).filter(x=>x&&x.id&&Array.isArray(x.ex));
+      const ids=new Set(remote.map(r=>r.id));
+      const localOnly=sessions.filter(s=>!ids.has(s.id));
+      sessions=remote.concat(localOnly);ls.set("ppl_sessions",sessions);
+      $("sync").textContent=snap.metadata.fromCache?"同步緊…":"已同步 ✓";
+      if(!snap.metadata.fromCache)localOnly.forEach(s=>db.collection("sessions").doc(s.id).set(s).catch(()=>{}));
+      if(!$("v-log").hidden&&!document.activeElement.matches("input,textarea"))renderLog();
+      if(!$("v-hist").hidden)renderHist();
+    },()=>{clearTimeout(timer);$("sync").textContent="只存喺呢部機"});
+  });
+}
+}
+</script>
+</body>
+</html>
